@@ -28,3 +28,4 @@ Network Effects: Spikes propagate through synaptic connections
 
 Inhibitory Control: Red connections provide network stability
 
+![Demo](https://github.com/xalentis/ComputationalNeuroscience/blob/master/visual_demo.png)
