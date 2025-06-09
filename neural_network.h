@@ -113,23 +113,29 @@ public:
     // Receive input from connected neuron
     void receive_input(float input, float conductance = 1.0f) {
         voltage_ += input * conductance;
-    }
+        
+        // Prevent voltage from going too extreme
+        voltage_ = std::max(-80.0f, std::min(55.0f, voltage_));
     
     // Update neuron state with learning
     bool update(uint32_t current_step) {
         // Decay spike trace
         spike_trace_ *= 0.95f;
         
-        // Voltage decay towards resting potential
-        voltage_ += (resting_potential_ - voltage_) * decay_rate_;
+        // MODIFIED: Only apply decay if not currently spiking
+        if (!spiking_) {
+            // Voltage decay towards resting potential
+            voltage_ += (resting_potential_ - voltage_) * decay_rate_;
+        }
         
         // Check for spike
         bool was_spiking = spiking_;
         spiking_ = voltage_ >= threshold_;
         
-        // Reset voltage after spike and update spike trace
+        // MODIFIED: Better spike handling
         if (spiking_ && !was_spiking) {
-            voltage_ = resting_potential_ + 30.0f; // Spike peak
+            // New spike - set to peak voltage
+            voltage_ = 30.0f; // Spike peak
             spike_trace_ = 1.0f; // Reset spike trace
             
             // Update all outgoing synapses' traces
@@ -138,8 +144,10 @@ public:
             }
             
             return true; // New spike occurred
-        } else if (was_spiking && !spiking_) {
-            voltage_ = resting_potential_ - 10.0f; // Hyperpolarization
+        } else if (was_spiking && voltage_ <= threshold_) {
+            // MODIFIED: End of spike - reset to resting with brief hyperpolarization
+            spiking_ = false;
+            voltage_ = resting_potential_ - 10.0f; // Brief hyperpolarization
         }
         
         // Update traces even when not spiking
@@ -148,6 +156,10 @@ public:
         }
         
         return false;
+    }
+
+    bool is_close_to_threshold() const {
+        return (voltage_ > threshold_ - 10.0f);
     }
     
     // Apply learning to all synapses

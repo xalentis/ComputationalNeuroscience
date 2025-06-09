@@ -137,25 +137,33 @@ class NeuralNetworkVisualizer:
     def create_fully_connected_network(self, n_neurons):
         network = neural_cpp.NeuralNetwork()
         for i in range(n_neurons):
-            network.add_neuron()
+            network.add_neuron(threshold=-60.0, resting=-70.0, decay=0.05)
         
         # connect every neuron to every other neuron
         for i in range(n_neurons):
             for j in range(n_neurons):
                 if i != j:  # no self-connections
-                    # random weight between 0.1 and 2.0
-                    weight = 0.1 + np.random.random() * 1.9
-                    # 20% chance of inhibitory connection
-                    synapse_type = neural_cpp.SynapseType.INHIBITORY if np.random.random() < 0.2 else neural_cpp.SynapseType.EXCITATORY
+                    # MODIFIED: Increase weights and reduce inhibitory connections
+                    weight = 0.5 + np.random.random() * 2.5  # Increased from 0.1-2.0 to 0.5-3.0
+                    # Reduce inhibitory connections from 20% to 10%
+                    synapse_type = neural_cpp.SynapseType.INHIBITORY if np.random.random() < 0.1 else neural_cpp.SynapseType.EXCITATORY
                     network.connect_neurons(i, j, weight, synapse_type)
         return network
+    
+    def trigger_initial_activity(self):
+        for i in range(min(3, self.network_size)):
+            # Give a strong initial stimulus to guarantee spiking
+            self.network.stimulate_neuron(i, 50.0)  # Strong stimulus
+        self.network.update()  # Process the stimulus
+
+
     
     def update_network(self):
         start_time = time.perf_counter()
         
-        # apply random stimulation to some neurons to
-        stimulation_neurons = np.random.choice(self.network_size, size=3, replace=False)
-        stimulation_current = 15.0 + np.random.normal(0, 5.0)
+        # apply random stimulation to some neurons
+        stimulation_neurons = np.random.choice(self.network_size, size=5, replace=False)  # More neurons
+        stimulation_current = 25.0 + np.random.normal(0, 10.0)  # Increased from 15.0
         
         for neuron_id in stimulation_neurons:
             self.network.stimulate_neuron(int(neuron_id), stimulation_current)
@@ -174,9 +182,9 @@ class NeuralNetworkVisualizer:
         stats = self.network.get_synapse_stats()
         self.synapse_count_history.append(stats.active_synapses)
         
-        # record voltages of first few neurons for plotting
+        # record voltages of  neurons for plotting
         voltages = []
-        for i in range(min(5, self.network_size)):
+        for i in range(self.network_size): 
             try:
                 neuron = self.network.get_neuron(i)
                 voltages.append(neuron.voltage())
@@ -265,8 +273,8 @@ class NeuralNetworkVisualizer:
             for i in range(min(5, voltage_array.shape[1])):
                 self.ax2.plot(self.time_steps, voltage_array[:, i], 
                             label=f'Neuron {i}', alpha=0.8)
-            self.ax2.legend()
-            self.ax2.set_ylim(-80, 20)
+            #self.ax2.legend()
+            self.ax2.set_ylim(-100, 100)
         
         # network statistics
         self.ax3.set_title("Network Statistics")
@@ -304,22 +312,22 @@ class NeuralNetworkVisualizer:
         try:
             stats = self.network.get_synapse_stats()
             info_text = f"""
-Network Size: {self.network_size} neurons
-Total Synapses: {stats.total_synapses}
-Active Synapses: {stats.active_synapses}
-Average Activity: {stats.avg_activity:.4f}
-Average Weight: {stats.avg_weight:.4f}
+                        Network Size: {self.network_size} neurons
+                        Total Synapses: {stats.total_synapses}
+                        Active Synapses: {stats.active_synapses}
+                        Average Activity: {stats.avg_activity:.4f}
+                        Average Weight: {stats.avg_weight:.4f}
 
-Simulation Step: {self.step_count}
-Last Pruning: Step {self.last_pruning_step}
-Pruning Enabled: {self.enable_pruning}
+                        Simulation Step: {self.step_count}
+                        Last Pruning: Step {self.last_pruning_step}
+                        Pruning Enabled: {self.enable_pruning}
 
-Network Type: {self.network_type}
+                        Network Type: {self.network_type}
             """
             
             self.ax6.text(0.05, 0.95, info_text, transform=self.ax6.transAxes,
-                         fontsize=10, verticalalignment='top',
-                         bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8))
+                         fontsize=10, verticalalignment='top')
+
         except Exception as e:
             self.ax6.text(0.05, 0.95, f"Error getting stats: {e}", 
                          transform=self.ax6.transAxes, fontsize=10, 
@@ -336,6 +344,7 @@ Network Type: {self.network_type}
     
     def run(self, interval=50):        
         try:
+            self.trigger_initial_activity()
             anim = animation.FuncAnimation(self.fig, self.animate, interval=interval, blit=False)
             plt.tight_layout()
             plt.show()
