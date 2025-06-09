@@ -20,7 +20,7 @@ Voltage Plot: Shows membrane potential traces for first 5 neurons
 
 ## Key Features:
 
-Random Stimulation: Network receives random input spikes
+Random Stimulation: Network receives random input spikes 
 
 Realistic Dynamics: Neurons exhibit spike-and-reset behavior
 
